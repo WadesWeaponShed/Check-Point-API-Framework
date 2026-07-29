@@ -202,6 +202,42 @@ button:hover { background: var(--panel-soft); }
   margin-bottom: 18px;
 }
 .table-head p { margin-bottom: 0; color: var(--muted); }
+.docs-link { flex: 0 0 auto; color: var(--accent); font-weight: 800; }
+
+.command-info {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+}
+.command-info-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.command-info h3 { margin: 0 0 5px; font-size: 17px; }
+.command-info p { margin: 0; color: var(--muted); }
+.command-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.badge {
+  display: inline-flex;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #e8eef5;
+  color: #42546b;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.badge.mutation { background: #fff4d6; color: var(--warn); }
+.command-parameters { display: grid; gap: 6px; margin-top: 12px; }
+.command-parameters details { border-top: 1px solid var(--line); padding-top: 8px; }
+.command-parameters summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 800; }
+.command-parameters ul { columns: 2; margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-size: 12px; }
+.command-parameters li { break-inside: avoid; margin-bottom: 5px; }
+.mutation-warning {
+  border: 1px solid #efd38a;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fff8e6;
+  color: #765100;
+  font-weight: 800;
+}
 
 .contexts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .contexts span {
@@ -240,6 +276,9 @@ pre {
   .login-panel, .grid-form, .tool-form { grid-template-columns: 1fr; }
   .full-row, .grid-form .primary { grid-column: auto; }
   .topbar, .table-head { align-items: stretch; flex-direction: column; }
+  .command-info-head { flex-direction: column; }
+  .command-badges { justify-content: flex-start; }
+  .command-parameters ul { columns: 1; }
   .contexts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .actions button { width: 100%; }
 }

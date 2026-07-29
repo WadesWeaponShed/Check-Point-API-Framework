@@ -8,6 +8,8 @@ const managementTypeInput = document.querySelector("#managementType");
 const managementHostInput = loginForm.querySelector('input[name="host"]');
 let sessionId = "";
 let sessionDescription = null;
+let commandCatalog = null;
+let visibleCommands = [];
 
 async function api(path, body) {
   const response = await fetch(path, {
@@ -31,6 +33,118 @@ function parseJson(text) {
 
 function show(value) {
   output.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+}
+
+function selectedCatalogCommand() {
+  const name = document.querySelector("#commandSelect").value;
+  return commandCatalog?.commands.find((command) => command.name === name) || null;
+}
+
+function fieldSummary(field) {
+  const alternatives = field.alternatives?.length ? ` or ${field.alternatives.join(", ")}` : "";
+  return `${field.name}${alternatives} — ${field.type}`;
+}
+
+function renderCommandDetails({ resetBody = false } = {}) {
+  const command = selectedCatalogCommand();
+  const infoName = document.querySelector("#commandInfoName");
+  const infoDescription = document.querySelector("#commandInfoDescription");
+  const badges = document.querySelector("#commandBadges");
+  const parameters = document.querySelector("#commandParameters");
+  const warning = document.querySelector("#mutationWarning");
+  badges.replaceChildren();
+  parameters.replaceChildren();
+
+  if (!command) {
+    infoName.textContent = "No Matching Commands";
+    infoDescription.textContent = "Change the category or search text to see commands.";
+    warning.classList.add("hidden");
+    return;
+  }
+
+  infoName.textContent = command.name;
+  infoDescription.textContent = command.description || "No description is provided in the API reference.";
+  const badgeValues = [
+    command.category,
+    command.readOnly ? "Read-Only" : "Changes State",
+    command.deprecated ? "Deprecated" : ""
+  ].filter(Boolean);
+  for (const value of badgeValues) {
+    const badge = document.createElement("span");
+    badge.textContent = value;
+    badge.className = value === "Changes State" ? "badge mutation" : "badge";
+    badges.append(badge);
+  }
+
+  const groups = [
+    ["Required", command.requiredFields],
+    ["Optional", command.optionalFields]
+  ];
+  for (const [label, fields] of groups) {
+    if (!fields?.length) continue;
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = `${label} Parameters (${fields.length})`;
+    details.append(summary);
+    const list = document.createElement("ul");
+    for (const field of fields) {
+      const item = document.createElement("li");
+      item.textContent = fieldSummary(field);
+      item.title = field.description || "";
+      list.append(item);
+    }
+    details.append(list);
+    parameters.append(details);
+  }
+  warning.classList.toggle("hidden", command.readOnly);
+  if (resetBody) {
+    document.querySelector('#commandForm textarea[name="body"]').value =
+      JSON.stringify(command.requestTemplate || {}, null, 2);
+  }
+}
+
+function renderCommandOptions({ preserveSelection = true } = {}) {
+  if (!commandCatalog) return;
+  const select = document.querySelector("#commandSelect");
+  const previous = preserveSelection ? select.value : "";
+  const category = document.querySelector("#commandCategory").value;
+  const search = document.querySelector("#commandSearch").value.trim().toLowerCase();
+  visibleCommands = commandCatalog.commands.filter((command) =>
+    (!category || command.category === category) &&
+    (!search || `${command.name} ${command.description}`.toLowerCase().includes(search))
+  );
+  select.replaceChildren();
+  for (const command of visibleCommands) {
+    const option = document.createElement("option");
+    option.value = command.name;
+    option.textContent = `${command.name}${command.readOnly ? "" : " ⚠"}`;
+    select.append(option);
+  }
+  if (visibleCommands.some((command) => command.name === previous)) select.value = previous;
+  else if (visibleCommands.some((command) => command.name === "show-gateways-and-servers")) {
+    select.value = "show-gateways-and-servers";
+  }
+  renderCommandDetails({ resetBody: true });
+}
+
+async function loadCommandCatalog() {
+  const status = document.querySelector("#catalogStatus");
+  try {
+    const response = await fetch("/data/check-point-api-v2.1.json");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    commandCatalog = await response.json();
+    const categorySelect = document.querySelector("#commandCategory");
+    for (const category of commandCatalog.categories) {
+      const option = document.createElement("option");
+      option.value = category;
+      option.textContent = category;
+      categorySelect.append(option);
+    }
+    status.textContent = `${commandCatalog.commandCount.toLocaleString()} commands from the Check Point Management API ${commandCatalog.apiVersion} reference.`;
+    renderCommandOptions({ preserveSelection: false });
+  } catch (error) {
+    status.textContent = `Command catalog could not be loaded: ${error.message}`;
+  }
 }
 
 function updateLoginFields() {
@@ -57,6 +171,10 @@ function renderSession() {
 authModeInputs.forEach((input) => input.addEventListener("change", updateLoginFields));
 managementTypeInput.addEventListener("change", updateLoginFields);
 updateLoginFields();
+document.querySelector("#commandCategory").addEventListener("change", () => renderCommandOptions());
+document.querySelector("#commandSearch").addEventListener("input", () => renderCommandOptions());
+document.querySelector("#commandSelect").addEventListener("change", () => renderCommandDetails({ resetBody: true }));
+void loadCommandCatalog();
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -97,7 +215,15 @@ document.querySelector("#commandForm").addEventListener("submit", async (event) 
   event.preventDefault();
   const form = new FormData(event.currentTarget);
   try {
-    show(await api("/api/command", {
+    const command = selectedCatalogCommand();
+    if (command && !command.readOnly) {
+      const confirmed = window.confirm(
+        `${command.name} can change management state. Run this command with the current request body?`
+      );
+      if (!confirmed) return;
+    }
+    const path = form.get("command") === "run-script" ? "/api/run-script" : "/api/command";
+    show(await api(path, {
       sessionId,
       context: form.get("context"),
       command: form.get("command"),

@@ -14,6 +14,9 @@ A neutral Node.js starter for applications built on the Check Point Management A
 - Username/password and API-key authentication
 - Self-signed TLS certificates when explicitly enabled
 - Generic Management API commands
+- A searchable, categorized catalog of documented Management API v2.1 commands
+- Starter JSON bodies and parameter metadata from the official API reference
+- Confirmation warnings before commands that can change management state
 - Automatic pagination for `show-*` collection commands
 - Concurrent, queued `run-script` execution
 - `show-task` polling and Gaia output decoding
@@ -36,6 +39,16 @@ Run the syntax checks and tests:
 ```bash
 npm run check
 ```
+
+Refresh the committed command catalog from Check Point's current v2.1 reference:
+
+```bash
+npm run catalog:update
+```
+
+The generated catalog is stored at `public/data/check-point-api-v2.1.json`. It is
+loaded locally by the browser; the application does not scrape the documentation
+site at runtime.
 
 Useful environment variables:
 

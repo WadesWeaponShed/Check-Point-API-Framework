@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { apiUrl, normalizeBaseUrl } from "../src/check-point-client.js";
 import { SessionManager } from "../src/session-manager.js";
 
@@ -138,4 +139,21 @@ test("large-environment mode applies separate API and run-script throttles", asy
   assert.equal(connected.largeEnvironmentMode, true);
   assert.equal(maxActiveApi, 2);
   assert.equal(maxActiveScripts, 1);
+});
+
+test("generated v2.1 command catalog includes categorized read and write commands", async () => {
+  const catalog = JSON.parse(await readFile(
+    new URL("../public/data/check-point-api-v2.1.json", import.meta.url),
+    "utf8"
+  ));
+  const showHost = catalog.commands.find((command) => command.name === "show-host");
+  const addHost = catalog.commands.find((command) => command.name === "add-host");
+
+  assert.equal(catalog.apiVersion, "v2.1");
+  assert.equal(catalog.commandCount, catalog.commands.length);
+  assert.ok(catalog.commandCount >= 1000);
+  assert.equal(showHost.category, "Network Objects / Host");
+  assert.equal(showHost.readOnly, true);
+  assert.equal(addHost.readOnly, false);
+  assert.deepEqual(addHost.requestTemplate, { name: "", "ip-address": "" });
 });

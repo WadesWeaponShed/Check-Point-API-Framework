@@ -65,10 +65,31 @@
       </section>
 
       <section class="panel">
-        <div class="table-head"><div><h2>API Command Explorer</h2><p>Call a Management API command using any available session context.</p></div></div>
+        <div class="table-head">
+          <div>
+            <h2>API Command Explorer</h2>
+            <p id="catalogStatus">Loading the Check Point Management API v2.1 command catalog…</p>
+          </div>
+          <a class="docs-link" href="https://sc1.checkpoint.com/documents/latest/APIs/index.html#introduction~v2.1%20" target="_blank" rel="noreferrer">Open API Reference</a>
+        </div>
         <form id="commandForm" class="tool-form">
           <label>Session Context<select name="context" class="context-select"></select></label>
-          <label>Command<input name="command" value="show-gateways-and-servers" required></label>
+          <label>Category<select id="commandCategory"><option value="">All Categories</option></select></label>
+          <label class="full-row">Search Commands<input id="commandSearch" type="search" placeholder="Search command names and descriptions"></label>
+          <label class="full-row">Command<select name="command" id="commandSelect" required></select></label>
+          <section id="commandInfo" class="command-info full-row" aria-live="polite">
+            <div class="command-info-head">
+              <div>
+                <h3 id="commandInfoName">Select a Command</h3>
+                <p id="commandInfoDescription">Command details will appear here.</p>
+              </div>
+              <div id="commandBadges" class="command-badges"></div>
+            </div>
+            <div id="commandParameters" class="command-parameters"></div>
+          </section>
+          <div id="mutationWarning" class="mutation-warning full-row hidden">
+            This command can change management state. Review the request body carefully before running it.
+          </div>
           <label class="full-row">Request Body (JSON)<textarea name="body" rows="6">{}</textarea></label>
           <div class="form-actions full-row"><button type="submit" class="primary">Run Command</button><button type="button" id="exampleButton">Run Example Workflow</button></div>
         </form>

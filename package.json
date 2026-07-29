@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "check": "node --check src/server.js && node --check src/check-point-client.js && node --check src/session-manager.js && node --check src/workflows/example.js && node --test"
+    "check": "node --check src/server.js && node --check src/check-point-client.js && node --check src/session-manager.js && node --check src/workflows/example.js && node --check scripts/generate-command-catalog.mjs && node --test",
+    "catalog:update": "node scripts/generate-command-catalog.mjs"
   },
   "engines": {
     "node": ">=18"
