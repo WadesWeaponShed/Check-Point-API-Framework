@@ -1,0 +1,15 @@
+{
+  "name": "check-point-api-framework",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Extensible starter application for Check Point Management API projects.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "check": "node --check src/server.js && node --check src/check-point-client.js && node --check src/session-manager.js && node --check src/workflows/example.js && node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

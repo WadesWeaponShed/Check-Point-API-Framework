@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Check Point API Framework</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="app">
+    <section class="panel login-panel" id="loginCard">
+      <div>
+        <p class="eyebrow">Extensible starter</p>
+        <h1 class="title-stack">
+          <span>Check Point API</span>
+          <span>Framework</span>
+        </h1>
+        <p class="lede">Connect to an SMS, Smart-1 Cloud tenant, or MDS and start building with the Check Point Management API.</p>
+        <p class="lede">The framework handles sessions, API contexts, pagination, and Gaia script execution so your project can focus on its own workflow.</p>
+      </div>
+      <form id="loginForm" class="grid-form">
+        <label class="full-row">Management Host Type
+          <select name="managementType" id="managementType">
+            <option value="sms" selected>Security Management Server (SMS)</option>
+            <option value="smart1-cloud">Smart-1 Cloud</option>
+            <option value="mds">Multi-Domain Server (MDS)</option>
+          </select>
+        </label>
+        <label class="full-row">Management Host<input name="host" required placeholder="Hostname or IP Address"></label>
+        <label class="mds-field hidden full-row">Domain / CMA<input name="domain" placeholder="Domain Name or IP"></label>
+        <label class="mds-field hidden full-row">MDS Object Name<input name="managementObjectName" placeholder="MDS_Object"></label>
+        <label>Port<input name="port" placeholder="443"></label>
+        <label class="username-field full-row">Username<input name="username" autocomplete="username"></label>
+        <fieldset class="auth-mode full-row">
+          <legend>Authentication</legend>
+          <label><input type="radio" name="authMode" value="password" checked> Password</label>
+          <label><input type="radio" name="authMode" value="api-key"> API Key</label>
+        </fieldset>
+        <label class="password-field full-row">Password<input name="password" type="password" autocomplete="current-password"></label>
+        <label class="api-key-field hidden full-row">API Key<input name="apiKey" type="password"></label>
+        <label class="check-row full-row"><input name="ignoreTls" type="checkbox" checked> Allow Self-Signed Certificate</label>
+        <label class="check-row large-env-row full-row">
+          <input name="largeEnvironmentMode" type="checkbox">
+          Large Environment Mode
+          <span>Lower API and run-script concurrency for large MDS / many-gateway environments.</span>
+        </label>
+        <div id="loginStatus" class="status-card full-row" role="status">Not connected.</div>
+        <button type="submit" class="primary">Log In</button>
+      </form>
+    </section>
+
+    <section class="workspace hidden" id="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="connectionLabel">Not connected</p>
+          <h1 class="title-stack compact"><span>Check Point API</span><span>Framework</span></h1>
+          <p class="topbar-description">Use the available Check Point session contexts to explore commands, run Gaia scripts, or test the replaceable example workflow.</p>
+        </div>
+        <div class="actions"><button id="logoutButton">Log Out</button></div>
+      </header>
+
+      <section class="panel">
+        <div class="table-head"><div><h2>Session Contexts</h2><p>Only contexts accepted by the connected management environment are enabled.</p></div></div>
+        <div id="contexts" class="contexts"></div>
+      </section>
+
+      <section class="panel">
+        <div class="table-head"><div><h2>API Command Explorer</h2><p>Call a Management API command using any available session context.</p></div></div>
+        <form id="commandForm" class="tool-form">
+          <label>Session Context<select name="context" class="context-select"></select></label>
+          <label>Command<input name="command" value="show-gateways-and-servers" required></label>
+          <label class="full-row">Request Body (JSON)<textarea name="body" rows="6">{}</textarea></label>
+          <div class="form-actions full-row"><button type="submit" class="primary">Run Command</button><button type="button" id="exampleButton">Run Example Workflow</button></div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="table-head"><div><h2>Gaia Run-Script</h2><p>Execute a script through Management and wait for the resulting task output.</p></div></div>
+        <form id="scriptForm" class="tool-form">
+          <label>Session Context<select name="context" class="context-select"></select></label>
+          <label>Target Name<input name="target" required placeholder="gateway-object-name"></label>
+          <label class="full-row">Script<textarea name="script" rows="4" required>clish -c "show version all"</textarea></label>
+          <div class="form-actions full-row"><button type="submit" class="primary">Run Script</button></div>
+        </form>
+      </section>
+
+      <section class="panel output-panel">
+        <div class="table-head"><div><h2>Result</h2><p>Responses and errors appear here as formatted JSON.</p></div><button id="clearButton">Clear</button></div>
+        <pre id="output">Ready.</pre>
+      </section>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
