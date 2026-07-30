@@ -150,7 +150,7 @@ async function loadCommandCatalog() {
 function updateLoginFields() {
   const authMode = document.querySelector('input[name="authMode"]:checked')?.value || "password";
   managementHostInput.placeholder = managementTypeInput.value === "smart1-cloud"
-    ? "sampletennet-com-randomdata.maas.checkpoint.com/e4a2f819-3b91-4c6d-921e-7f01a5b823e4/web-api"
+    ? "tenant.example.maas.checkpoint.com/context/web_api"
     : "Hostname or IP Address";
   document.querySelectorAll(".mds-field").forEach((field) => field.classList.toggle("hidden", managementTypeInput.value !== "mds"));
   document.querySelectorAll(".password-field, .username-field").forEach((field) => field.classList.toggle("hidden", authMode !== "password"));
