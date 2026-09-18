@@ -33,7 +33,116 @@ function parseJson(text) {
 }
 
 function show(value) {
-  output.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  const pre = document.createElement("pre");
+  pre.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  output.replaceChildren(pre);
+}
+
+function taskSummaryFromResponse(response) {
+  if (Array.isArray(response?.taskSummary)) return response.taskSummary;
+  return (response?.result?.tasks || []).map((task) => ({
+    id: task["task-id"] || task.taskId || task.uid || "",
+    name: task["task-name"] || task.taskName || task.name || "run-script",
+    status: task.status || "unknown",
+    progress: task["progress-percentage"] ?? task.progressPercentage ?? null,
+    startedAt: task["start-time"] || task.startTime || "",
+    lastUpdatedAt: task["last-update-time"] || task.lastUpdateTime || "",
+    targets: (task["task-details"] || task.taskDetails || []).map((detail) => detail.gatewayName || detail["gateway-name"]).filter(Boolean),
+    output: "",
+    errors: [],
+    executions: []
+  }));
+}
+
+function appendTaskField(container, label, value) {
+  if (value === "" || value === null || value === undefined || value.length === 0) return;
+  const field = document.createElement("div");
+  const name = document.createElement("dt");
+  const content = document.createElement("dd");
+  name.textContent = label;
+  content.textContent = Array.isArray(value) ? value.join(", ") : value;
+  field.append(name, content);
+  container.append(field);
+}
+
+function showRunScriptResult(response) {
+  const tasks = taskSummaryFromResponse(response);
+  const fragment = document.createDocumentFragment();
+  const heading = document.createElement("p");
+  heading.className = "result-summary";
+  const statuses = tasks.map((task) => String(task.status).toLowerCase());
+  heading.textContent = !tasks.length
+    ? "Run-script request completed with no task details returned."
+    : statuses.some((status) => ["failed", "error"].includes(status))
+      ? "Run-script task finished with errors."
+      : statuses.some((status) => ["in progress", "pending"].includes(status))
+        ? "Run-script task is still in progress."
+        : "Run-script task completed.";
+  fragment.append(heading);
+
+  for (const task of tasks) {
+    const card = document.createElement("section");
+    card.className = "script-result-card";
+    const header = document.createElement("div");
+    header.className = "script-result-head";
+    const title = document.createElement("h3");
+    title.textContent = task.name || "run-script";
+    const status = document.createElement("span");
+    status.className = `task-status ${String(task.status).toLowerCase()}`;
+    status.textContent = task.status || "unknown";
+    header.append(title, status);
+    card.append(header);
+
+    const fields = document.createElement("dl");
+    fields.className = "task-fields";
+    appendTaskField(fields, "Task ID", task.id);
+    appendTaskField(fields, "Target", task.targets);
+    appendTaskField(fields, "Progress", task.progress === null ? null : `${task.progress}%`);
+    appendTaskField(fields, "Started", task.startedAt);
+    appendTaskField(fields, "Last Updated", task.lastUpdatedAt);
+    card.append(fields);
+
+    const executions = task.executions || [];
+    if (executions.length) {
+      const results = document.createElement("div");
+      results.className = "gateway-executions";
+      for (const execution of executions) {
+        const entry = document.createElement("section");
+        entry.className = "gateway-execution";
+        const entryHeading = document.createElement("h4");
+        entryHeading.textContent = execution.target || "Gateway Output";
+        entry.append(entryHeading);
+        const text = execution.error || execution.output || execution.message || "No output was returned by this gateway.";
+        const pre = document.createElement("pre");
+        pre.className = `script-output${execution.error ? " task-error" : ""}`;
+        pre.textContent = text;
+        entry.append(pre);
+        results.append(entry);
+      }
+      card.append(results);
+    } else {
+      const scriptOutput = task.output || task.statusDescription || (tasks.length === 1 ? response.output : "");
+      if (scriptOutput) {
+        const label = document.createElement("h4");
+        label.textContent = task.output ? "Gateway Output" : "Task Message";
+        const pre = document.createElement("pre");
+        pre.className = "script-output";
+        pre.textContent = scriptOutput;
+        card.append(label, pre);
+      }
+    }
+    fragment.append(card);
+  }
+
+  const raw = document.createElement("details");
+  raw.className = "raw-response";
+  const summary = document.createElement("summary");
+  summary.textContent = "Raw Check Point Task Response";
+  const pre = document.createElement("pre");
+  pre.textContent = JSON.stringify(response.result || response, null, 2);
+  raw.append(summary, pre);
+  fragment.append(raw);
+  output.replaceChildren(fragment);
 }
 
 function selectedCatalogCommand() {
@@ -306,7 +415,7 @@ document.querySelector("#scriptForm").addEventListener("submit", async (event) =
       if (!confirmed) return;
     }
     show("Waiting for run-script task…");
-    show(await api("/api/run-script", {
+    showRunScriptResult(await api("/api/run-script", {
       sessionId,
       context: form.get("context"),
       body: {

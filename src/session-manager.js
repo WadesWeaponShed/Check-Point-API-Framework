@@ -29,20 +29,55 @@ function taskIds(result) {
     .filter(Boolean))];
 }
 
+function decodeResponseMessage(value) {
+  if (!value) return "";
+  try { return Buffer.from(String(value), "base64").toString("utf8").trim(); } catch { return ""; }
+}
+
+function taskSummary(result) {
+  return (result?.tasks || []).map((task) => {
+    const details = task?.["task-details"] || task?.taskDetails || [];
+    const executions = details.map((detail) => ({
+      target: detail?.gatewayName || detail?.["gateway-name"] || "",
+      status: detail?.status || detail?.statusCode || detail?.["status-code"] || "",
+      message: String(detail?.statusDescription || detail?.["status-description"] || ""),
+      output: decodeResponseMessage(detail?.responseMessage || detail?.["response-message"]),
+      error: String(detail?.responseError || detail?.["response-error"] || "")
+    }));
+    const output = executions
+      .map((execution) => execution.output)
+      .filter(Boolean)
+      .join("\n");
+    return {
+      id: task?.["task-id"] || task?.taskId || task?.uid || "",
+      name: task?.["task-name"] || task?.taskName || task?.name || "run-script",
+      status: task?.status || "unknown",
+      progress: task?.["progress-percentage"] ?? task?.progressPercentage ?? null,
+      startedAt: task?.["start-time"] || task?.startTime || "",
+      lastUpdatedAt: task?.["last-update-time"] || task?.lastUpdateTime || "",
+      targets: executions.map((execution) => execution.target).filter(Boolean),
+      output,
+      statusDescription: executions
+        .map((execution) => execution.message)
+        .filter(Boolean)
+        .join("\n"),
+      errors: executions
+        .map((execution) => execution.error)
+        .filter(Boolean),
+      executions
+    };
+  });
+}
+
 function taskOutput(result) {
-  const details = (result?.tasks || []).flatMap((task) => task?.["task-details"] || task?.taskDetails || []);
-  const descriptions = details
-    .map((detail) => detail?.statusDescription || detail?.["status-description"])
-    .filter(Boolean)
-    .map(String);
-  const messages = details
-    .map((detail) => detail?.responseMessage || detail?.["response-message"])
-    .filter(Boolean)
-    .map((value) => {
-      try { return Buffer.from(String(value), "base64").toString("utf8").trim(); } catch { return ""; }
-    })
-    .filter(Boolean);
-  return [...descriptions, ...messages].join("\n");
+  const tasks = taskSummary(result);
+  const messages = tasks.map((task) => task.output).filter(Boolean);
+  if (messages.length) return messages.join("\n");
+  return tasks.map((task) => task.statusDescription).filter(Boolean).join("\n");
+}
+
+function scriptResult(result) {
+  return { result, output: taskOutput(result), taskSummary: taskSummary(result) };
 }
 
 function createLimiter(limit) {
@@ -187,9 +222,9 @@ export class SessionManager {
     return queue(async () => {
       const client = this.client(id, context);
       const initial = await client.command("run-script", body);
-      if (taskOutput(initial)) return { result: initial, output: taskOutput(initial) };
+      if (taskOutput(initial)) return scriptResult(initial);
       const ids = taskIds(initial);
-      if (ids.length === 0) return { result: initial, output: "" };
+      if (ids.length === 0) return scriptResult(initial);
 
       let lastResult = initial;
       for (let attempt = 0; attempt < this.taskPollAttempts; attempt += 1) {
@@ -199,7 +234,7 @@ export class SessionManager {
         })));
         lastResult = results[0] || lastResult;
         const completed = results.find((result) => taskOutput(result));
-        if (completed) return { result: completed, output: taskOutput(completed) };
+        if (completed) return scriptResult(completed);
         if (attempt < this.taskPollAttempts - 1) {
           const interval = session.largeEnvironmentMode
             ? this.largeEnvironmentTaskPollIntervalMs
@@ -207,7 +242,7 @@ export class SessionManager {
           await new Promise((resolve) => setTimeout(resolve, interval));
         }
       }
-      return { result: lastResult, output: taskOutput(lastResult) };
+      return scriptResult(lastResult);
     });
   }
 

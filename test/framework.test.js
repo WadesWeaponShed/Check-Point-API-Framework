@@ -78,6 +78,19 @@ test("creates MDS contexts, runs commands, polls run-script, and logs out", asyn
     targets: ["gw"]
   }, "mds");
   assert.equal(script.output, "R81.20");
+  assert.deepEqual(script.taskSummary, [{
+    id: "",
+    name: "run-script",
+    status: "unknown",
+    progress: null,
+    startedAt: "",
+    lastUpdatedAt: "",
+    targets: [],
+    output: "",
+    statusDescription: "R81.20",
+    errors: [],
+    executions: [{ target: "", status: "", message: "R81.20", output: "", error: "" }]
+  }]);
   assert.equal(requests.find(({ command }) => command === "run-script").sid, "sid-2");
   assert.equal(taskPolls, 2);
 
@@ -139,6 +152,40 @@ test("large-environment mode applies separate API and run-script throttles", asy
   assert.equal(connected.largeEnvironmentMode, true);
   assert.equal(maxActiveApi, 2);
   assert.equal(maxActiveScripts, 1);
+});
+
+test("run-script keeps decoded output and errors attached to their gateway targets", async () => {
+  class ScriptClient {
+    constructor(options) { Object.assign(this, options); }
+    withSid(sid) { return new ScriptClient({ ...this, sid }); }
+    async command(command) {
+      if (command === "login") return { sid: "script-sid" };
+      if (command === "logout") return { ok: true };
+      if (command === "run-script") return {
+        tasks: [{
+          "task-id": "task-output-1",
+          "task-name": "run-script",
+          status: "succeeded",
+          "progress-percentage": 100,
+          "task-details": [
+            { gatewayName: "gw-east", responseMessage: Buffer.from("east output").toString("base64") },
+            { gatewayName: "gw-west", responseError: "SSH connection failed" }
+          ]
+        }]
+      };
+      return {};
+    }
+  }
+  const sessions = new SessionManager({ clientFactory: (options) => new ScriptClient(options) });
+  const connected = await sessions.login({ host: "mgmt.example.com", authMode: "api-key", apiKey: "key" });
+  const result = await sessions.runScript(connected.sessionId, { script: "cplp list", targets: ["gw-east", "gw-west"] });
+
+  assert.equal(result.output, "east output");
+  assert.deepEqual(result.taskSummary[0].targets, ["gw-east", "gw-west"]);
+  assert.deepEqual(result.taskSummary[0].executions, [
+    { target: "gw-east", status: "", message: "", output: "east output", error: "" },
+    { target: "gw-west", status: "", message: "", output: "", error: "SSH connection failed" }
+  ]);
 });
 
 test("generated v2.1 command catalog includes categorized read and write commands", async () => {
