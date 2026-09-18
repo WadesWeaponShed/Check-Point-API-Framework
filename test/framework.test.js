@@ -157,3 +157,19 @@ test("generated v2.1 command catalog includes categorized read and write command
   assert.equal(addHost.readOnly, false);
   assert.deepEqual(addHost.requestTemplate, { name: "", "ip-address": "" });
 });
+
+test("gateway run-script preset catalog separates monitoring from state-changing commands", async () => {
+  const catalog = JSON.parse(await readFile(
+    new URL("../public/data/gateway-run-script-presets.json", import.meta.url),
+    "utf8"
+  ));
+  const status = catalog.presets.find((preset) => preset.id === "autoupdater-status");
+  const disable = catalog.presets.find((preset) => preset.id === "autoupdater-disable-urgent");
+  const revert = catalog.presets.find((preset) => preset.id === "cplp-revert");
+
+  assert.equal(status.risk, "safe");
+  assert.equal(status.script, "autoupdatercli status");
+  assert.equal(disable.risk, "danger");
+  assert.equal(revert.risk, "danger");
+  assert.ok(catalog.presets.length >= 15);
+});

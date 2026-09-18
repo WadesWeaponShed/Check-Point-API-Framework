@@ -100,6 +100,17 @@
         <form id="scriptForm" class="tool-form">
           <label>Session Context<select name="context" class="context-select"></select></label>
           <label>Target Name<input name="target" required placeholder="gateway-object-name"></label>
+          <label class="full-row">Gateway Script Preset<select name="preset" id="scriptPreset"><option value="">Custom Script</option></select></label>
+          <section id="scriptPresetInfo" class="script-preset-info full-row" aria-live="polite">
+            <div class="command-info-head">
+              <div>
+                <h3 id="scriptPresetName">Custom Script</h3>
+                <p id="scriptPresetDescription">Enter a Gaia shell command to run against the selected target.</p>
+              </div>
+              <div id="scriptPresetBadges" class="command-badges"></div>
+            </div>
+          </section>
+          <div id="scriptPresetWarning" class="script-preset-warning full-row hidden"></div>
           <label class="full-row">Script<textarea name="script" rows="4" required>clish -c "show version all"</textarea></label>
           <div class="form-actions full-row"><button type="submit" class="primary">Run Script</button></div>
         </form>

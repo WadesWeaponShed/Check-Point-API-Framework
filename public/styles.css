@@ -238,6 +238,13 @@ button:hover { background: var(--panel-soft); }
   color: #765100;
   font-weight: 800;
 }
+.script-preset-info { padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-soft); }
+.script-preset-info h3 { margin: 0 0 5px; font-size: 17px; }
+.script-preset-info p { margin: 0; color: var(--muted); }
+.badge.script-risk-safe { background: #ddf4e8; color: var(--ok); }
+.badge.script-risk-caution { background: #fff4d6; color: var(--warn); }
+.badge.script-risk-danger { background: #fff1f1; color: #8f1f1f; }
+.script-preset-warning { border: 1px solid #efd38a; border-radius: 6px; padding: 10px 12px; background: #fff8e6; color: #765100; font-weight: 800; }
 
 .contexts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .contexts span {

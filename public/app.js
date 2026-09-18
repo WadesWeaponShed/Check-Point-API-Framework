@@ -10,6 +10,7 @@ let sessionId = "";
 let sessionDescription = null;
 let commandCatalog = null;
 let visibleCommands = [];
+let gatewayScriptPresets = [];
 
 async function api(path, body) {
   const response = await fetch(path, {
@@ -147,6 +148,65 @@ async function loadCommandCatalog() {
   }
 }
 
+function selectedScriptPreset() {
+  const id = document.querySelector("#scriptPreset").value;
+  return gatewayScriptPresets.find((preset) => preset.id === id) || null;
+}
+
+function renderScriptPreset() {
+  const preset = selectedScriptPreset();
+  const name = document.querySelector("#scriptPresetName");
+  const description = document.querySelector("#scriptPresetDescription");
+  const badges = document.querySelector("#scriptPresetBadges");
+  const warning = document.querySelector("#scriptPresetWarning");
+  badges.replaceChildren();
+  warning.classList.add("hidden");
+
+  if (!preset) {
+    name.textContent = "Custom Script";
+    description.textContent = "Enter a Gaia shell command to run against the selected target.";
+    return;
+  }
+
+  name.textContent = preset.name;
+  description.textContent = preset.description;
+  for (const tag of preset.tags || []) {
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = tag;
+    badges.append(badge);
+  }
+  const risk = document.createElement("span");
+  risk.className = `badge script-risk-${preset.risk}`;
+  risk.textContent = preset.risk === "safe" ? "Monitoring" : "Changes Gateway State";
+  badges.append(risk);
+  document.querySelector('#scriptForm textarea[name="script"]').value = preset.script;
+  if (preset.risk !== "safe") {
+    warning.textContent = preset.risk === "danger"
+      ? "High-risk preset: this can remove protection or disable security updates. Use only with an approved change and applicable Check Point guidance."
+      : "This preset can change gateway state or trigger an update action. Review the command and target carefully before running.";
+    warning.classList.remove("hidden");
+  }
+}
+
+async function loadGatewayScriptPresets() {
+  try {
+    const response = await fetch("/data/gateway-run-script-presets.json");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const catalog = await response.json();
+    gatewayScriptPresets = catalog.presets || [];
+    const select = document.querySelector("#scriptPreset");
+    for (const preset of gatewayScriptPresets) {
+      const option = document.createElement("option");
+      option.value = preset.id;
+      option.textContent = `${preset.name}${preset.risk === "safe" ? "" : " ⚠"}`;
+      select.append(option);
+    }
+  } catch (error) {
+    document.querySelector("#scriptPresetDescription").textContent = `Preset catalog could not be loaded: ${error.message}`;
+  }
+}
+
 function updateLoginFields() {
   const authMode = document.querySelector('input[name="authMode"]:checked')?.value || "password";
   managementHostInput.placeholder = managementTypeInput.value === "smart1-cloud"
@@ -174,7 +234,9 @@ updateLoginFields();
 document.querySelector("#commandCategory").addEventListener("change", () => renderCommandOptions());
 document.querySelector("#commandSearch").addEventListener("input", () => renderCommandOptions());
 document.querySelector("#commandSelect").addEventListener("change", () => renderCommandDetails({ resetBody: true }));
+document.querySelector("#scriptPreset").addEventListener("change", renderScriptPreset);
 void loadCommandCatalog();
+void loadGatewayScriptPresets();
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -236,6 +298,13 @@ document.querySelector("#scriptForm").addEventListener("submit", async (event) =
   event.preventDefault();
   const form = new FormData(event.currentTarget);
   try {
+    const preset = selectedScriptPreset();
+    if (preset && preset.risk !== "safe") {
+      const confirmed = window.confirm(
+        `${preset.name} can change gateway state. Run this command against ${form.get("target")}?`
+      );
+      if (!confirmed) return;
+    }
     show("Waiting for run-script task…");
     show(await api("/api/run-script", {
       sessionId,

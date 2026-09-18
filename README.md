@@ -20,6 +20,7 @@ A neutral Node.js starter for applications built on the Check Point Management A
 - Automatic pagination for `show-*` collection commands
 - Concurrent, queued `run-script` execution
 - `show-task` polling and Gaia output decoding
+- Gateway Live Patch and AutoUpdater `run-script` presets, categorized by monitoring or state-changing risk
 - Best-effort logout of every Check Point session
 
 There is intentionally no product-specific evaluation, remediation, reporting, or audit-history logic.
