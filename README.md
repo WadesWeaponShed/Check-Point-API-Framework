@@ -41,6 +41,23 @@ Run the syntax checks and tests:
 npm run check
 ```
 
+## Using an AI Coding Agent
+
+This project includes explicit guardrails for Codex, Claude Code, Gemini CLI, and other coding agents. Before asking an agent to change the framework, tell it to read these files **in this order**:
+
+1. [`AGENTS.md`](AGENTS.md) — required framework contracts and completion checks
+2. [`README.md`](README.md) — setup, boundaries, and local API
+3. [`docs/architecture.md`](docs/architecture.md) — SMS, Smart-1 Cloud, MDS, contexts, sessions, and task lifecycle
+4. [`docs/adding-workflows.md`](docs/adding-workflows.md) — how to build an application without changing the base plumbing
+5. [`docs/gaia-run-script-presets.md`](docs/gaia-run-script-presets.md) — how to safely add Gaia/run-script commands
+6. `src/check-point-client.js`, `src/session-manager.js`, `src/server.js`, and `test/framework.test.js`
+
+Suggested prompt:
+
+> Read `AGENTS.md` and every file listed under “Using an AI Coding Agent” before changing this repository. Preserve the SMS, Smart-1 Cloud, and MDS login/session contracts. Build the requested application behavior as a workflow or UI extension; do not bypass SessionManager, task polling, throttling, or the existing command safeguards. Run `npm run check` before you finish.
+
+The agent instructions are intentionally framework-focused: they allow application-specific work while protecting login, context selection, generic commands, Gaia task execution, and large-environment handling.
+
 Refresh the committed command catalog from Check Point's current v2.1 reference:
 
 ```bash
