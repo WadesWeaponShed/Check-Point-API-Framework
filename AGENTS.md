@@ -16,6 +16,8 @@ Before changing code, read these files in order:
 
 Also read `docs/gaia-run-script-presets.md` before adding or changing Gaia commands or run-script presets.
 
+For UI work, read `DESIGN.md`, `docs/design-patterns.md`, and `skills/framework-design/SKILL.md`. These describe the approved workbench and extension patterns. Retain native HTML/CSS/JavaScript unless the user requests a migration.
+
 ## Framework Contracts: Do Not Break
 
 - Preserve all management types: SMS, Smart-1 Cloud, and MDS.

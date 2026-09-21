@@ -84,6 +84,22 @@ Useful environment variables:
 
 ## Where to build your application
 
+### Coding Agent Design Guidance
+
+For UI changes, have your agent read these files after `AGENTS.md`:
+
+- [`DESIGN.md`](DESIGN.md): approved colors, typography, layout, and responsive rules.
+- [`docs/design-patterns.md`](docs/design-patterns.md): login, navigation, forms, results, and interaction states.
+- [`skills/framework-design/SKILL.md`](skills/framework-design/SKILL.md): reusable design workflow for coding agents.
+
+Suggested prompt:
+
+> Read AGENTS.md, DESIGN.md, docs/design-patterns.md, and skills/framework-design/SKILL.md. Extend the approved workbench style for this feature. Preserve all management types, contexts, confirmations, and per-gateway output. Verify desktop, mobile, and keyboard behavior, then run npm run check.
+
+The bundled skill is ordinary Markdown with skill frontmatter. Any coding agent can read it by path; automatic discovery varies by coding app. For apps supporting local skill installation, use `skills/framework-design/` and keep the repository's design documents available. No external plugin, font service, or original author's machine is required. Project-specific design guidance takes precedence over generic aesthetic defaults unless you request a redesign.
+
+`public/workbench.css` extends the base styles. `public/workbench.js` arranges existing forms into navigation and content areas while retaining their event handlers. Load these after `styles.css` and `app.js`, respectively. The design mock is historical sample data; the main app performs real API calls.
+
 Put application-specific collection and business logic in `src/workflows/`. The included `example.js` lists gateway/server objects and demonstrates the intended boundary:
 
 ```js
