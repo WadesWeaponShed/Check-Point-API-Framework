@@ -14,7 +14,7 @@ A neutral Node.js starter for applications built on the Check Point Management A
 - Username/password and API-key authentication
 - Self-signed TLS certificates when explicitly enabled
 - Generic Management API commands
-- A searchable, categorized catalog of documented Management API v2.1 commands
+- Searchable, versioned Management API catalogs (v2.1 and v2.2 bundled)
 - Starter JSON bodies and parameter metadata from the official API reference
 - Confirmation warnings before commands that can change management state
 - Automatic pagination for `show-*` collection commands
@@ -64,9 +64,26 @@ Refresh the committed command catalog from Check Point's current v2.1 reference:
 npm run catalog:update
 ```
 
-The generated catalog is stored at `public/data/check-point-api-v2.1.json`. It is
-loaded locally by the browser; the application does not scrape the documentation
-site at runtime.
+This command regenerates the bundled v2.1 catalog. Use `-- --version v2.2` for v2.2.
+Catalogs are generated from official documentation; do not hand-edit them.
+
+### Catalog Updates and Compatibility
+
+**Catalog Update Details** compares the selected API catalog with the preceding installed version (for example, v2.1 → v2.2), listing added, removed, changed and newly deprecated command names even when no update is available. This is a comparison of downloaded command metadata, not the full vendor changelog. The update status separately reports changes since your last download; empty update arrays mean that your installed copy already matches the published data.
+
+The update button shows progress and a visible result: **Already up to date**, the API version(s) added, existing catalogs refreshed, or an error with the cached catalogs retained. A new version message is shown only after successful installation. Expand **Catalog Update Details** for individual command changes.
+
+After login, use **Check for Updates** in API Command Explorer to download all published API versions, validate them, and show added, removed, changed and newly deprecated commands. Existing catalogs remain usable if a download fails. `npm run catalog:sync` performs the same update without a management login. Internet access to `sc1.checkpoint.com` is needed only for these updates.
+
+Updates are cached in `.catalog-cache/` (ignored by Git); each catalog is replaced by an atomic rename and its preceding version is kept as `.previous`. Valid cached catalogs load on restart, with bundled catalogs as a fallback. This updates command data, not application code or Check Point servers. Fresh clones include v2.1 and v2.2; run an update to obtain older versions.
+
+Set `CATALOG_AUTO_UPDATE=true` to update at server startup and every 24 hours while it is running. The default is manual updates. Automatic updates do not switch an open form's selected version or execute commands; reload the catalog to see new data.
+
+The explorer queries `show-api-versions` for the selected context, chooses the highest installed version advertised by that context, and uses explicit `/web_api/vX.Y/command` requests. Other catalogs are browsable, but cannot execute through the explorer unless support is advertised. If discovery fails, the explorer stays browse-only; existing unversioned workflows and Gaia form behavior remain available. Version support does not guarantee permissions, allowed domain type, platform or gateway prerequisites.
+
+Command badges show the selected catalog and earliest downloaded version containing the command, not an unverified introduction date. Official API-to-release mappings include v2.1 → R82.10 and v2.2 → R82.20. These are API release associations, not claims that every command works on that release and all earlier releases. Unknown mappings are explicitly unverified. Gaia shell presets still require separate target release/platform/hotfix verification.
+
+Local catalog endpoints: `POST /api/catalog/status`, `/api/catalog/get` with `version`, `/api/catalog/update` with an active `sessionId`, and `/api/capabilities` with `sessionId` and `context`. Versioned command/run-script requests accept `apiVersion`; SessionManager rejects versions not advertised by that context. All management calls retain existing throttling.
 
 Useful environment variables:
 

@@ -30,10 +30,11 @@ export function normalizeBaseUrl(host, port, { smart1Cloud = false } = {}) {
   return url.toString().replace(/\/$/, "");
 }
 
-export function apiUrl(connection, command) {
+export function apiUrl(connection, command, apiVersion = "") {
+  if (apiVersion && !/^v\d+(?:\.\d+){0,2}$/.test(apiVersion)) throw new Error("Invalid API version.");
   const url = new URL(connection.baseUrl);
   const basePath = normalizeApiBasePath(url.pathname, connection.smart1Cloud);
-  url.pathname = `${basePath || "/web_api"}/${String(command).replace(/^\/+/, "")}`.replace(/\/+/g, "/");
+  url.pathname = `${basePath || "/web_api"}/${apiVersion ? `${apiVersion}/` : ""}${String(command).replace(/^\/+/, "")}`.replace(/\/+/g, "/");
   url.search = "";
   url.hash = "";
   return url;
@@ -69,8 +70,8 @@ export class CheckPointClient {
     return new CheckPointClient({ ...this, sid });
   }
 
-  async command(command, body = {}) {
-    const url = apiUrl(this, command);
+  async command(command, body = {}, apiVersion = "") {
+    const url = apiUrl(this, command, apiVersion);
     const payload = JSON.stringify(body);
     const startedAt = Date.now();
     this.logger?.({ event: "request", command, target: `${url.origin}${url.pathname}`, body: redactSecrets(body) });

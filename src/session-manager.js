@@ -177,6 +177,28 @@ export class SessionManager {
     return session;
   }
 
+  async capabilities(id, context = "primary") {
+    const session = this.get(id);
+    session.capabilities ||= {};
+    if (session.capabilities[context]) return session.capabilities[context];
+    try {
+      const result = await this.command(id, "show-api-versions", {}, context);
+      const normalize = (value) => {
+        const version = `v${String(value).replace(/^v/, "")}`;
+        return /^v\d+(?:\.\d+){0,2}$/.test(version) ? version : "";
+      };
+      const supported = (Array.isArray(result["supported-versions"]) ? result["supported-versions"] : []).map(normalize).filter(Boolean);
+      if (!supported.length) throw new Error("Server did not advertise supported API versions.");
+      return session.capabilities[context] = { supported, current: normalize(result["current-version"]), error: "" };
+    } catch (error) { return { supported: [], current: "", error: error.message }; }
+  }
+
+  async validateVersion(id, context, version) {
+    if (!version) return;
+    const capability = await this.capabilities(id, context);
+    if (!capability.supported.includes(version)) throw new Error(`API ${version} is not verified as supported in this context.`);
+  }
+
   client(id, context = "primary") {
     if (!CONTEXTS.has(context)) throw new Error(`Unknown session context: ${context}.`);
     const session = this.get(id);
@@ -203,11 +225,12 @@ export class SessionManager {
     };
   }
 
-  command(id, command, body = {}, context = "primary") {
+  command(id, command, body = {}, context = "primary", apiVersion = "") {
     if (!command || !/^[a-z0-9][a-z0-9-]*$/i.test(command)) throw new Error("A valid API command is required.");
     const session = this.get(id);
-    const work = () => this.client(id, context).command(command, body);
-    return session.largeEnvironmentMode ? this.largeEnvironmentApiQueued(work) : work();
+    const work = () => this.client(id, context).command(command, body, apiVersion);
+    const dispatch = () => session.largeEnvironmentMode ? this.largeEnvironmentApiQueued(work) : work();
+    return apiVersion ? this.validateVersion(id, context, apiVersion).then(dispatch) : dispatch();
   }
 
   list(id, command, body = {}, context = "primary") {
@@ -216,12 +239,13 @@ export class SessionManager {
     return session.largeEnvironmentMode ? this.largeEnvironmentApiQueued(work) : work();
   }
 
-  runScript(id, body, context = "primary") {
+  runScript(id, body, context = "primary", apiVersion = "") {
     const session = this.get(id);
     const queue = session.largeEnvironmentMode ? this.largeEnvironmentRunQueued : this.runQueued;
     return queue(async () => {
+      await this.validateVersion(id, context, apiVersion);
       const client = this.client(id, context);
-      const initial = await client.command("run-script", body);
+      const initial = await client.command("run-script", body, apiVersion);
       if (taskOutput(initial)) return scriptResult(initial);
       const ids = taskIds(initial);
       if (ids.length === 0) return scriptResult(initial);
@@ -231,7 +255,7 @@ export class SessionManager {
         const results = await Promise.all(ids.map((taskId) => client.command("show-task", {
           "task-id": taskId,
           "details-level": "full"
-        })));
+        }, apiVersion)));
         lastResult = results[0] || lastResult;
         const completed = results.find((result) => taskOutput(result));
         if (completed) return scriptResult(completed);

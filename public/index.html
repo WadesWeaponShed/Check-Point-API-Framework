@@ -75,11 +75,16 @@
         <div class="table-head">
           <div>
             <h2>API Command Explorer</h2>
-            <p id="catalogStatus">Loading the Check Point Management API v2.1 command catalog…</p>
+            <p id="catalogStatus">Loading Management API catalogs…</p>
           </div>
           <a class="docs-link" href="https://sc1.checkpoint.com/documents/latest/APIs/index.html#introduction~v2.1%20" target="_blank" rel="noreferrer">Open API Reference</a>
         </div>
         <form id="commandForm" class="tool-form">
+          <label>API Catalog Version<select id="catalogVersion"></select></label>
+          <div class="form-actions catalog-update-actions"><button type="button" id="catalogUpdate">Check for Updates</button></div>
+          <p class="full-row catalog-update-status" id="catalogUpdateStatus" role="status" aria-live="polite" hidden></p>
+          <p class="full-row" id="compatibilityStatus" role="status"></p>
+          <details class="full-row"><summary>Catalog Update Details</summary><pre id="catalogChanges">No update checked during this session.</pre></details>
           <label>Session Context<select name="context" class="context-select"></select></label>
           <label>Category<select id="commandCategory"><option value="">All Categories</option></select></label>
           <label class="full-row">Search Commands<input id="commandSearch" type="search" placeholder="Search command names and descriptions"></label>
@@ -103,7 +108,7 @@
       </section>
 
       <section class="panel">
-        <div class="table-head"><div><h2>Gaia Run-Script</h2><p>Execute a script through Management and wait for the resulting task output.</p></div></div>
+        <div class="table-head"><div><h2>Gaia Run-Script</h2><p>Execute a script through Management and wait for the resulting task output. Shell command compatibility depends on the target gateway release, platform and hotfix; the Management API catalog does not verify it.</p></div></div>
         <form id="scriptForm" class="tool-form">
           <label>Session Context<select name="context" class="context-select"></select></label>
           <label>Target Name<input name="target" required placeholder="gateway-object-name"></label>

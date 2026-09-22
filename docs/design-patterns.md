@@ -10,6 +10,8 @@ Use native buttons for workspace selection and aria-pressed for the active butto
 Use the catalog for command choices and parameter metadata. Put context near the request. Keep descriptions concise and advanced parameter details expandable. Show risk before execution and retain existing confirmation handlers. Custom scripts remain editable. Avoid moving or recreating forms in a way that loses listeners.
 
 ## Results
+
+Catalog update actions show an inline live status beside the version controls: checking, no changes available, new versions installed, existing catalogs refreshed, or failure. Disable the button while checking and restore it afterward. Keep the summary visible without opening technical details. Do not announce a discovered version as installed before the update completes.
 Bind results to the submitted request, context and target. Identify each gateway, distinguish output from errors, and keep raw responses collapsed but accessible. Use textContent for API-controlled text. Preserve monospace whitespace and horizontal scrolling for Gaia tables. Unknown or pending status must not become a success message.
 
 For new result UI, cover initial, waiting, succeeded, partial, failed and empty-output states. Format timestamp objects before display. Expose elapsed/polling limits accurately. Existing backend limitations require separate functional work, not a cosmetic claim of correctness.

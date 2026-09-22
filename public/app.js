@@ -11,6 +11,9 @@ let sessionDescription = null;
 let commandCatalog = null;
 let visibleCommands = [];
 let gatewayScriptPresets = [];
+let catalogCapability = { supported: [], error: "Log in to verify API compatibility." };
+let catalogLoading = false;
+let catalogRequest = 0;
 
 async function api(path, body) {
   const response = await fetch(path, {
@@ -175,6 +178,8 @@ function renderCommandDetails({ resetBody = false } = {}) {
   infoName.textContent = command.name;
   infoDescription.textContent = command.description || "No description is provided in the API reference.";
   const badgeValues = [
+    `Documented in ${commandCatalog.apiVersion}`,
+    command.documentedVersions?.length ? `Earliest downloaded match: ${command.documentedVersions[0]}` : "",
     command.category,
     command.readOnly ? "Read-Only" : "Changes State",
     command.deprecated ? "Deprecated" : ""
@@ -207,6 +212,7 @@ function renderCommandDetails({ resetBody = false } = {}) {
     parameters.append(details);
   }
   warning.classList.toggle("hidden", command.readOnly);
+  document.querySelector("#commandInfoDescription").textContent += ` ${command.releaseCompatibility || "Release/hotfix compatibility is unverified."}`;
   if (resetBody) {
     document.querySelector('#commandForm textarea[name="body"]').value =
       JSON.stringify(command.requestTemplate || {}, null, 2);
@@ -237,13 +243,27 @@ function renderCommandOptions({ preserveSelection = true } = {}) {
   renderCommandDetails({ resetBody: true });
 }
 
-async function loadCommandCatalog() {
+async function loadCommandCatalog(requestedVersion = "") {
+  const request = ++catalogRequest;
+  catalogLoading = true;
+  document.querySelector('#commandForm button[type="submit"]').disabled = true;
   const status = document.querySelector("#catalogStatus");
   try {
-    const response = await fetch("/data/check-point-api-v2.1.json");
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    commandCatalog = await response.json();
+    const state = await api("/api/catalog/status", {});
+    const context = document.querySelector('#commandForm [name="context"]').value || "primary";
+    const capability = sessionId ? await api("/api/capabilities", { sessionId, context }) : { supported: [], error: "Log in to verify API compatibility." };
+    const matching = state.installed.filter(v => capability.supported.includes(v));
+    const version = requestedVersion || matching.at(-1) || state.installed.at(-1);
+    const catalog = await api("/api/catalog/get", { version });
+    if (request !== catalogRequest) return;
+    catalogCapability = capability;
+    commandCatalog = catalog;
+    renderCatalogChanges(state, version);
+    const versions = document.querySelector('#catalogVersion');
+    versions.replaceChildren(...state.installed.map(v => new Option(`${v}${capability.supported.includes(v) ? " / Supported API" : ""}`, v)));
+    versions.value = version;
     const categorySelect = document.querySelector("#commandCategory");
+    categorySelect.replaceChildren(new Option("All Categories", ""));
     for (const category of commandCatalog.categories) {
       const option = document.createElement("option");
       option.value = category;
@@ -251,11 +271,71 @@ async function loadCommandCatalog() {
       categorySelect.append(option);
     }
     status.textContent = `${commandCatalog.commandCount.toLocaleString()} commands from the Check Point Management API ${commandCatalog.apiVersion} reference.`;
+    if (catalog.release) status.textContent += ` Release mapping: ${catalog.release}.`;
+    document.querySelector('.docs-link').href = `https://sc1.checkpoint.com/documents/latest/APIs/index.html#introduction~${version}`;
+    const supported = capability.supported.includes(version);
+    document.querySelector('#compatibilityStatus').textContent = supported
+      ? `${context}: API ${version} is advertised by this server. Requests use this explicit API version. Permissions, domain restrictions and gateway prerequisites still apply.`
+      : `Browse only: ${capability.error || `this context does not advertise API ${version}`}. Choose a supported version before execution.`;
+    document.querySelector('#commandForm button[type="submit"]').disabled = !supported;
     renderCommandOptions({ preserveSelection: false });
   } catch (error) {
     status.textContent = `Command catalog could not be loaded: ${error.message}`;
+    catalogCapability = { supported: [], error: error.message };
+  } finally {
+    if (request === catalogRequest) catalogLoading = false;
   }
 }
+
+function renderCatalogChanges(state, selectedVersion) {
+  const lines = [state.lastCheck ? `Last update check: ${state.lastCheck}` : 'Comparing locally installed catalogs.'];
+  const updates = (state.changes || []).filter(change => ['added', 'removed', 'changed', 'deprecated'].some(key => change[key]?.length));
+  lines.push(updates.length ? `Last check updated ${updates.length} catalog(s).` : 'No catalog content changes recorded in this server session.');
+  lines.push('', 'VERSION-TO-VERSION COMPARISON');
+  const comparison = (state.versionChanges || []).find(change => change.version === selectedVersion);
+  if (!comparison) {
+    lines.push('No earlier installed catalog is available for this version.');
+  } else {
+    lines.push(`${comparison.comparedTo} → ${comparison.version}`, 'Based on downloaded command metadata, not a complete vendor release changelog.');
+    for (const [key, label] of [['added', 'Added Commands'], ['removed', 'Removed Commands'], ['changed', 'Changed Command Metadata'], ['deprecated', 'Newly Deprecated Commands']]) {
+      const names = comparison[key] || [];
+      lines.push('', `${label} (${names.length})`, names.length ? names.join('\n') : 'None.');
+    }
+  }
+  document.querySelector('#catalogChanges').textContent = lines.join('\n');
+}
+
+document.querySelector('#catalogVersion').addEventListener('change', event => void loadCommandCatalog(event.target.value));
+document.querySelector('#commandForm [name="context"]').addEventListener('change', () => void loadCommandCatalog());
+document.querySelector('#catalogUpdate').addEventListener('click', async event => {
+  const button = event.currentTarget;
+  const notice = document.querySelector('#catalogUpdateStatus');
+  notice.hidden = false;
+  notice.dataset.state = 'checking';
+  notice.textContent = 'Checking Check Point for catalog updates…';
+  button.disabled = true;
+  button.textContent = 'Checking…';
+  document.querySelector('#catalogChanges').textContent = 'Downloading and validating published catalogs…';
+  try {
+    const previous = await api('/api/catalog/status', {});
+    const state = await api('/api/catalog/update', { sessionId });
+    const added = state.installed.filter(version => !previous.installed.includes(version));
+    const refreshed = state.changes.filter(change => previous.installed.includes(change.version) &&
+      ['added', 'removed', 'changed', 'deprecated'].some(key => change[key]?.length));
+    notice.dataset.state = 'success';
+    notice.textContent = added.length
+      ? `API ${added.join(', ')} ${added.length === 1 ? 'has' : 'have'} been added to the framework.${refreshed.length ? ` ${refreshed.length} existing catalog(s) also refreshed.` : ''}`
+      : refreshed.length
+        ? `Catalog updates installed for ${refreshed.map(change => change.version).join(', ')}. See Catalog Update Details for command changes.`
+        : 'Already up to date. No new API versions or command changes are available.';
+    document.querySelector('#catalogChanges').textContent = JSON.stringify({ checked: state.lastCheck, changes: state.changes }, null, 2);
+    await loadCommandCatalog();
+  } catch (error) {
+    notice.dataset.state = 'error';
+    notice.textContent = `Could not complete the update check. Existing catalogs remain available. ${error.message}`;
+    document.querySelector('#catalogChanges').textContent = `Update failed; existing catalogs remain available. ${error.message}`;
+  } finally { button.disabled = false; button.textContent = 'Check for Updates'; }
+});
 
 function selectedScriptPreset() {
   const id = document.querySelector("#scriptPreset").value;
@@ -374,6 +454,7 @@ loginForm.addEventListener("submit", async (event) => {
     loginCard.classList.add("hidden");
     workspace.classList.remove("hidden");
     renderSession();
+    await loadCommandCatalog();
     show(sessionDescription);
   } catch (error) {
     loginStatus.textContent = `Connection failed: ${error.message}`;
@@ -386,6 +467,7 @@ document.querySelector("#commandForm").addEventListener("submit", async (event) 
   event.preventDefault();
   const form = new FormData(event.currentTarget);
   try {
+    if (catalogLoading || !catalogCapability.supported.includes(commandCatalog?.apiVersion)) throw new Error("Select an API version supported by this context before running the command.");
     const command = selectedCatalogCommand();
     if (command && !command.readOnly) {
       const confirmed = window.confirm(
@@ -394,12 +476,15 @@ document.querySelector("#commandForm").addEventListener("submit", async (event) 
       if (!confirmed) return;
     }
     const path = form.get("command") === "run-script" ? "/api/run-script" : "/api/command";
-    show(await api(path, {
+    const result = await api(path, {
       sessionId,
+      apiVersion: commandCatalog.apiVersion,
       context: form.get("context"),
       command: form.get("command"),
       body: parseJson(form.get("body"))
-    }));
+    });
+    if (path === '/api/run-script') showRunScriptResult(result);
+    else show(result);
   } catch (error) { show(error.details || error.message); }
 });
 

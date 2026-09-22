@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { SessionManager } from "./session-manager.js";
 import { runExampleWorkflow } from "./workflows/example.js";
+import { CatalogManager } from "./catalog-manager.js";
+const catalogs = await new CatalogManager().init();
 
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = Number(process.env.PORT || 3000);
@@ -69,6 +71,19 @@ async function handleApi(req, res) {
     const body = await readJson(req);
     let result;
     switch (req.url) {
+      case "/api/catalog/status":
+        result = catalogs.status();
+        break;
+      case "/api/catalog/get":
+        result = catalogs.get(body.version);
+        break;
+      case "/api/catalog/update":
+        sessions.get(body.sessionId);
+        result = await catalogs.update();
+        break;
+      case "/api/capabilities":
+        result = await sessions.capabilities(body.sessionId, body.context);
+        break;
       case "/api/login":
         result = await sessions.login(body);
         break;
@@ -76,13 +91,14 @@ async function handleApi(req, res) {
         result = sessions.describe(body.sessionId);
         break;
       case "/api/command":
-        result = await sessions.command(body.sessionId, body.command, body.body || {}, body.context);
+        if (body.apiVersion && !catalogs.get(body.apiVersion).commands.some(c => c.name === body.command)) throw new Error("Command not documented in selected catalog.");
+        result = await sessions.command(body.sessionId, body.command, body.body || {}, body.context, body.apiVersion);
         break;
       case "/api/list":
         result = { objects: await sessions.list(body.sessionId, body.command, body.body || {}, body.context) };
         break;
       case "/api/run-script":
-        result = await sessions.runScript(body.sessionId, body.body || {}, body.context);
+        result = await sessions.runScript(body.sessionId, body.body || {}, body.context, body.apiVersion);
         break;
       case "/api/example":
         result = await runExampleWorkflow({ sessions, sessionId: body.sessionId, context: body.context });
@@ -133,6 +149,11 @@ export const server = createServer((req, res) => {
 });
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  if (process.env.CATALOG_AUTO_UPDATE === "true") {
+    const update = () => catalogs.update().catch(error => console.error("Catalog update:", error.message));
+    void update();
+    setInterval(update, 24 * 60 * 60 * 1000).unref();
+  }
   server.listen(PORT, HOST, () => {
     console.log(`Check Point API Framework listening at http://${HOST}:${PORT}`);
   });

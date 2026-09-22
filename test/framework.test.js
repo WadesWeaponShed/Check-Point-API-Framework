@@ -4,6 +4,106 @@ import { readFile } from "node:fs/promises";
 import { apiUrl, normalizeBaseUrl } from "../src/check-point-client.js";
 import { SessionManager } from "../src/session-manager.js";
 
+import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { CatalogManager, parseVersions, compareVersions, catalogDiff } from "../src/catalog-manager.js";
+import { parseReleaseMapping, buildCatalog } from "../scripts/generate-command-catalog.mjs";
+
+test("official version discovery orders numerically and parses release mappings without executing code", () => {
+  assert.deepEqual(parseVersions('var versions=[{"key":"v2.10"},{"key":"v2.2"},{"key":"v2.2"}]; throw Error("never execute");'), ["v2.2", "v2.10"]);
+  assert.ok(compareVersions("v1.9.1", "v1.9") > 0);
+  assert.throws(() => parseVersions("unrecognized"), /Unrecognized/);
+  assert.deepEqual(parseReleaseMapping('<table id="versions-releases"><tr><td>v2.2</td><td><a>R82.20</a></td></tr></table>'), { "v2.2": "R82.20" });
+});
+
+test("explicit version URLs preserve SMS and Smart-1 Cloud paths", () => {
+  assert.equal(apiUrl({ baseUrl: "https://mgmt.example.com" }, "show-hosts", "v2.2").pathname, "/web_api/v2.2/show-hosts");
+  assert.equal(apiUrl({ baseUrl: "https://tenant.example.com/context/web_api", smart1Cloud: true }, "show-hosts", "v2.1").pathname, "/context/web_api/v2.1/show-hosts");
+  assert.throws(() => apiUrl({ baseUrl: "https://mgmt.example.com" }, "show-hosts", "../../"), /Invalid/);
+});
+
+test("catalog update persists valid versions, reports diffs, and preserves working catalogs on malformed downloads", async () => {
+  const root = await mkdtemp(join(tmpdir(), "cp-catalog-test-"));
+  const bundle = join(root, "bundle"), cache = join(root, "cache");
+  await mkdir(bundle);
+  const source = { commands: [{ name: { web: "show-hosts" }, type: "show" }], objects: [] };
+  const initial = buildCatalog(source, { chapters: [] }, "v2.1");
+  await writeFile(join(bundle, "check-point-api-v2.1.json"), JSON.stringify(initial));
+  let corrupt = false;
+  const fetcher = async url => ({ ok: true, text: async () => {
+    if (url.endsWith("versions.js")) return 'var versions=[{"key":"v2.1"},{"key":"v2.2"}];';
+    if (url.endsWith("api_versions.html")) return '<table id="versions-releases"><tr><td>v2.2</td><td>R82.20</td></tr></table>';
+    if (url.endsWith("content.json")) return JSON.stringify({ chapters: [] });
+    if (corrupt && url.includes("v2.2")) return '{"commands": []}';
+    return JSON.stringify(url.includes("v2.2") ? { ...source, commands: [...source.commands, { name: { web: "add-host" }, type: "add" }] } : source);
+  } });
+  try {
+    const manager = await new CatalogManager({ directory: cache, bundled: bundle, fetcher }).init();
+    const first = manager.update();
+    assert.equal(first, manager.update(), "concurrent update calls share a job");
+    const status = await first;
+    assert.deepEqual(status.installed, ["v2.1", "v2.2"]);
+    assert.deepEqual(status.changes.find(c => c.version === "v2.2").added, ["add-host"]);
+    assert.deepEqual(status.versionChanges.find(c => c.version === "v2.2").added, ["add-host"]);
+    const repeated = await manager.update();
+    assert.deepEqual(repeated.changes.find(c => c.version === "v2.2").added, []);
+    assert.deepEqual(repeated.versionChanges.find(c => c.version === "v2.2").added, ["add-host"]);
+    assert.equal(manager.get("v2.2").release, "R82.20");
+    assert.deepEqual(manager.get("v2.2").commands.find(c=>c.name === "show-hosts").documentedVersions, ["v2.1","v2.2"]);
+    corrupt = true;
+    await assert.rejects(manager.update(), /schema/);
+    assert.equal(manager.get("v2.2").commandCount, 2);
+    const restored = await new CatalogManager({ directory: cache, bundled: bundle, fetcher }).init();
+    assert.equal(restored.get("v2.2").commandCount, 2);
+    const changed = structuredClone(initial);
+    changed.commands[0].deprecated = true;
+    assert.deepEqual(catalogDiff(initial, changed).deprecated, ["show-hosts"]);
+    assert.throws(()=>manager.get("../invalid"), /not installed/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("context capability negotiation rejects unsupported versions and pins script task polls", async () => {
+  const calls = [];
+  class VersionClient {
+    constructor(options) { Object.assign(this, options); }
+    withSid(sid) { return new VersionClient({ ...this, sid }); }
+    async command(command, body, version) {
+      calls.push({ command, version, sid: this.sid });
+      if (command === "login") return { sid: body.domain || "primary" };
+      if (command === "show-api-versions") return { "supported-versions": this.sid === "Global" ? ["2.1"] : ["2.1","2.2"], "current-version": "2.2" };
+      if (command === "run-script") return { tasks: [{ "task-id": "id" }] };
+      if (command === "show-task") return { tasks: [{ "task-details": [{ responseMessage: Buffer.from("done").toString("base64") }] }] };
+      return {};
+    }
+  }
+  const sessions = new SessionManager({ clientFactory: o=>new VersionClient(o), largeEnvironmentApiConcurrency: 1 });
+  const login = await sessions.login({ host:"mds.example.com", username:"admin", password:"test", mdsMode:true, largeEnvironmentMode:true });
+  await sessions.command(login.sessionId, "show-hosts", {}, "primary", "v2.2");
+  await assert.rejects(sessions.command(login.sessionId, "show-hosts", {}, "global", "v2.2"), /not verified/);
+  await sessions.runScript(login.sessionId, { script:"echo done", targets:["gateway"] }, "primary", "v2.2");
+  assert.equal(calls.find(c=>c.command==="show-task").version, "v2.2");
+  assert.equal(calls.filter(c=>c.command==="show-hosts").length, 1);
+});
+
+test("capability detection failure leaves login and unversioned framework calls available", async () => {
+  class Client {
+    constructor(o) { Object.assign(this,o); }
+    withSid(sid) { return new Client({...this,sid}); }
+    async command(command) {
+      if(command==="login") return {sid:"sid"};
+      if(command==="show-api-versions") throw new Error("Unavailable");
+      return {ok:true};
+    }
+  }
+  const sessions=new SessionManager({clientFactory:o=>new Client(o)});
+  const login=await sessions.login({host:"sms.example.com",username:"admin",password:"test"});
+  assert.match((await sessions.capabilities(login.sessionId)).error,/Unavailable/);
+  assert.equal((await sessions.command(login.sessionId,"show-hosts")).ok,true);
+  await assert.rejects(sessions.command(login.sessionId,"show-hosts",{},"primary","v2.2"),/not verified/);
+});
+
+
 test("normalizes SMS and Smart-1 Cloud API URLs", () => {
   assert.equal(normalizeBaseUrl("mgmt.example.com", "443"), "https://mgmt.example.com");
   assert.equal(

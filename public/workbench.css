@@ -1,4 +1,11 @@
 :root { --accent: #ca004c; --accent-dark: #a90040; --muted: #526278; --radius: 6px; }
+.catalog-update-actions { align-self: end; align-items: center; }
+#catalogUpdate { min-height: 44px; padding: 10px 14px; font-size: 13px; line-height: 22px; background: #fff0f5; color: #a50040; border-color: #f4c1d3; }
+#catalogUpdate:hover:not(:disabled) { background: #ffe9f1; border-color: var(--accent); }
+#catalogUpdate:disabled { opacity: .6; cursor: wait; }
+.catalog-update-status { margin: 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: #fff0f5; color: #931342; font-size: 13px; }
+.catalog-update-status[data-state=success] { border-color: #18794e; background: #effaf4; color: #17633b; }
+.catalog-update-status[data-state=error] { border-color: #b42335; background: #fff1f1; color: #8f1f1f; }
 .login-credit { margin-top: 32px; padding-top: 28px; border-top: 1px solid var(--line); }
 .creator-link { display: inline-flex; align-items: center; gap: 16px; text-decoration: none; max-width: 100%; min-height: 56px; }
 .creator-link img { border-radius: 50%; object-fit: cover; flex: none; }

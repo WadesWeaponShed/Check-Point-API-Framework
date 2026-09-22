@@ -2,9 +2,10 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const API_VERSION = "v2.1";
+const API_VERSION = argument("--version") || "v2.1";
+if (!/^v\d+(?:\.\d+){0,2}$/.test(API_VERSION)) throw new Error("Invalid API version");
 const DOCS_BASE = `https://sc1.checkpoint.com/documents/latest/APIs/data/${API_VERSION}/dynamic`;
-const DEFAULT_OUTPUT = fileURLToPath(new URL("../public/data/check-point-api-v2.1.json", import.meta.url));
+const DEFAULT_OUTPUT = fileURLToPath(new URL(`../public/data/check-point-api-${API_VERSION}.json`, import.meta.url));
 
 function argument(name) {
   const index = process.argv.indexOf(name);
@@ -40,6 +41,18 @@ function stripHtml(value) {
     .replace(/<[^>]+>/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+export function parseReleaseMapping(html) {
+  const table = /<table[^>]*id="versions-releases"[^>]*>([\s\S]*?)<\/table>/i.exec(html)?.[1];
+  if (!table) throw new Error("Official release mapping table is missing.");
+  const releases = {};
+  for (const row of table.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const cells = [...row[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m => stripHtml(m[1]));
+    if (/^v\d+(?:\.\d+){0,2}$/.test(cells[0]) && /^R\d/.test(cells[1])) releases[cells[0]] = cells[1];
+  }
+  if (!Object.keys(releases).length) throw new Error("No official release mappings found.");
+  return releases;
 }
 
 function typeLabel(type) {
@@ -83,7 +96,7 @@ function isReadOnly(name, type) {
     /^(show|get|where-used|verify|keepalive|show-task|show-api-versions)(-|$)/.test(name);
 }
 
-function buildCatalog(apis, content) {
+export function buildCatalog(apis, content, version = API_VERSION) {
   const objects = new Map(apis.objects.map((object) => [object.name, object]));
   const categories = categoryMap(content.chapters);
   const commands = apis.commands
@@ -112,7 +125,7 @@ function buildCatalog(apis, content) {
     .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
 
   return {
-    apiVersion: API_VERSION,
+    apiVersion: version,
     generatedAt: new Date().toISOString(),
     source: "https://sc1.checkpoint.com/documents/latest/APIs/index.html",
     commandCount: commands.length,
@@ -121,10 +134,16 @@ function buildCatalog(apis, content) {
   };
 }
 
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 const apis = await loadJson(argument("--apis"), "apis.json");
 const content = await loadJson(argument("--content"), "content.json");
 const output = resolve(argument("--output") || DEFAULT_OUTPUT);
 const catalog = buildCatalog(apis, content);
+if (argument("--release-html")) {
+  catalog.release = parseReleaseMapping(await readFile(resolve(argument("--release-html")), "utf8"))[API_VERSION] || "";
+  catalog.releaseSource = `https://sc1.checkpoint.com/documents/latest/APIs/data/${API_VERSION}/api_versions.html`;
+}
 await mkdir(dirname(output), { recursive: true });
 await writeFile(output, `${JSON.stringify(catalog)}\n`, "utf8");
 console.log(`Generated ${catalog.commandCount} ${catalog.apiVersion} commands at ${output}`);
+}
