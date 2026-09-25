@@ -182,3 +182,7 @@ no generic placeholder names, no broken image links.)
 - Being too vague in atmosphere descriptions
 - Ignoring the anti-pattern list — these are what make the output premium
 - Defaulting to generic "safe" designs instead of enforcing the curated aesthetic
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

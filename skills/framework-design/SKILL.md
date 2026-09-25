@@ -16,3 +16,7 @@ For a new feature, identify its place in navigation, input/context selection, ex
 Use DESIGN.md for visual values and docs/design-patterns.md for interaction requirements. These project-specific choices override generic taste defaults; explicit user direction can evolve them. Update the design documents when the user approves a new convention.
 
 Verify affected states at desktop and narrow widths, with keyboard access and realistic long text. Test API-dependent UI using synthetic data unless live operation is requested. Run npm run check and syntax checks for changed frontend scripts. Report what was verified and what still requires a live environment.
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

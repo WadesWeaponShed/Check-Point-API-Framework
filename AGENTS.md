@@ -55,3 +55,7 @@ Before declaring a change complete:
 2. Confirm the login path still supports SMS, Smart-1 Cloud, and MDS contexts when affected.
 3. Confirm run-script output remains decoded, target-associated, and clean for success, error, and no-output responses when affected.
 4. State any new configuration, privileges, or operational risks in the README or relevant guide.
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

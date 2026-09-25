@@ -96,3 +96,7 @@ Evaluate your code against this matrix before delivering. This is the last filte
 - [ ] All animations use only `transform` and `opacity` — no layout-triggering properties
 - [ ] `backdrop-blur` is only applied to fixed/sticky elements, never to scrolling content
 - [ ] The overall impression reads as "$150k agency build", not "template with nice fonts"
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

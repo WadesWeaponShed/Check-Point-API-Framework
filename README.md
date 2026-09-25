@@ -12,7 +12,7 @@ A neutral Node.js starter for applications built on the Check Point Management A
   - Global Domain (`global`)
   - System Data (`system-data`)
 - Username/password and API-key authentication
-- Self-signed TLS certificates when explicitly enabled
+- Self-signed TLS certificates allowed by default, with an option to enable certificate verification
 - Generic Management API commands
 - Searchable, versioned Management API catalogs (v2.1 and v2.2 bundled)
 - Starter JSON bodies and parameter metadata from the official API reference
@@ -166,3 +166,7 @@ For MDS `run-script` calls targeting MDS-managed objects, pass `"context": "mds"
 ## Security notes
 
 This is a development framework, not a production-ready authentication boundary. Sessions and SIDs are held only in server memory, but the generic command route lets a connected operator invoke any command their Check Point account permits. Before exposing the app beyond localhost, add your own user authentication, authorization/command allowlists, CSRF protection, rate limiting, secure secret handling, and an HTTPS reverse proxy.
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

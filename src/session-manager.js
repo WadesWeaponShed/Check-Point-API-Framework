@@ -128,7 +128,7 @@ export class SessionManager {
     const baseClient = this.clientFactory({
       baseUrl,
       smart1Cloud,
-      rejectUnauthorized: !enabled(payload.ignoreTls),
+      rejectUnauthorized: payload.ignoreTls === undefined ? false : !enabled(payload.ignoreTls),
       logger: this.logger
     });
     const primaryLogin = await baseClient.command("login", loginBody(payload, payload.domain));

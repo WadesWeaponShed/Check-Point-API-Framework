@@ -68,3 +68,7 @@ For an action that changes Management or gateway state:
 - Reading credentials from source code or browser storage.
 - Running one `run-script` call per gateway in an unbounded `Promise.all`.
 - Returning only a raw task blob when clean per-target output is available.
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

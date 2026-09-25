@@ -21,3 +21,7 @@ Stack content at narrow widths. Do not hide required controls to make them fit. 
 
 ## Review Handoff
 Report changed surfaces, checks performed, and unverified behavior. Screenshots or browser checks should use realistic long names and mixed results. Run npm run check and JavaScript syntax checks for changed UI scripts. Never claim live SMS/Cloud/MDS verification based solely on mocked tests.
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

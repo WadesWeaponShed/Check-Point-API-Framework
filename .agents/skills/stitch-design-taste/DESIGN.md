@@ -119,3 +119,7 @@ Every screen must work flawlessly across all viewports. **Responsive is not opti
 - No `z-index` spam — use only for Navbar, Modal, Overlay layer contexts
 - No `h-screen` — always `min-h-[100dvh]`
 - No circular loading spinners — skeletal shimmer only
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

@@ -65,3 +65,7 @@ The immediate `run-script` response is often only a task reference, not the fina
 - Large-environment mode intentionally reduces parallel Management API and Gaia activity.
 
 See [adding workflows](adding-workflows.md) for the extension recipe and [Gaia run-script presets](gaia-run-script-presets.md) for command additions.
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

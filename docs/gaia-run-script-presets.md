@@ -36,3 +36,7 @@ Use one of these risk levels:
 ## Result Handling
 
 The framework decodes the Check Point task's Base64 `responseMessage` and presents outputs per gateway. A command can return a task status without output, or a mix of successful and failed targets. Preserve all of these results; do not reduce them to a single success/failure string.
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

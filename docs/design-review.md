@@ -32,3 +32,6 @@ Source review found separate functional issues: the command explorer still uses 
 ## Review Boundaries
 This is a source-based audit and design proposal. Production files are unchanged. Browser validation should cover desktop/mobile layouts, keyboard navigation, long tenant URLs and long Gaia output before production adoption.
 
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

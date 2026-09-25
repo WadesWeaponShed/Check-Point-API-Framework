@@ -4,6 +4,26 @@ import { readFile } from "node:fs/promises";
 import { apiUrl, normalizeBaseUrl } from "../src/check-point-client.js";
 import { SessionManager } from "../src/session-manager.js";
 
+test("self-signed certificates default on while explicit TLS verification is preserved for every management type", async () => {
+  const html = await readFile(new URL("../public/index.html", import.meta.url), "utf8");
+  assert.match(html, /<input\b[^>]*name="ignoreTls"[^>]*\bchecked\b/);
+  class TlsClient {
+    constructor(options) { Object.assign(this, options); }
+    withSid(sid) { return new TlsClient({ ...this, sid }); }
+    async command() { return { sid: "test-sid" }; }
+  }
+  for (const mode of [{}, { smart1Cloud: true }, { mdsMode: true, domain: "Domain-A" }]) {
+    for (const ignoreTls of [undefined, true, false]) {
+      const sessions = new SessionManager({ clientFactory: options => new TlsClient(options) });
+      const login = await sessions.login({ host: "example.com", username: "admin", password: "test", ...mode, ...(ignoreTls === undefined ? {} : { ignoreTls }) });
+      for (const [context, state] of Object.entries(login.contexts)) {
+        if (state.available) assert.equal(sessions.client(login.sessionId, context).rejectUnauthorized, ignoreTls === false);
+      }
+      await sessions.logout(login.sessionId);
+    }
+  }
+});
+
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

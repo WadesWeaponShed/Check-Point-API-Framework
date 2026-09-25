@@ -176,3 +176,7 @@ Apply changes in this order for maximum visual impact with minimum risk:
 - If the project uses Tailwind, check the version (v3 vs v4) before modifying config.
 - If the project has no framework, use vanilla CSS.
 - Keep changes reviewable and focused. Small, targeted improvements over big rewrites.
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.

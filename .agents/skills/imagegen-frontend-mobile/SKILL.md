@@ -1463,3 +1463,7 @@ It should actively avoid:
 - oversized device framing that distracts from the design
 
 The final result should look like a high-end mobile app concept with clean hierarchy, good flow logic, strong visual taste, richer image direction, a clean controlled color palette, non-generic art direction, strong multi-screen consistency, readable typography, premium phone mockup framing, and clear platform-aware structure.
+
+## Required Login Default
+
+Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.
