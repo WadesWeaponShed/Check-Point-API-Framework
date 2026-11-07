@@ -128,6 +128,24 @@
         </form>
       </section>
 
+      <section class="panel" id="passwordHashPanel">
+        <div class="table-head"><div><h2>SHA-512 Password Hash</h2><p>Generate a salted Gaia/Linux SHA-512 crypt hash ($6$). This does not change any account.</p></div></div>
+        <form id="passwordHashForm" class="tool-form" autocomplete="off">
+          <p class="full-row" id="passwordHashHelp">Processed by this framework server using OpenSSL. Passwords are not saved or sent to Check Point. At least 6 characters, maximum 128 UTF-8 bytes; no line breaks. Gaia does not support an asterisk (*) in passwords—users with one cannot log in. The target password policy may impose further requirements. Use HTTPS if accessing the framework remotely.</p>
+          <label class="full-row">Gaia Username<input id="hashUsername" value="admin" maxlength="32" pattern="[A-Za-z0-9_-]{1,32}" required autocomplete="off"></label>
+          <label class="full-row">Password<input id="hashPassword" type="password" required autocomplete="off" aria-describedby="passwordHashHelp"></label>
+          <label class="full-row">Confirm Password<input id="hashPasswordConfirm" type="password" required autocomplete="off"></label>
+          <div class="form-actions full-row"><button type="submit" class="primary">Generate Hash</button><button type="button" id="clearPasswordHash">Clear</button></div>
+          <p class="full-row" id="passwordHashStatus" role="status">Ready. Each hash uses a new random salt and 5,000 rounds.</p>
+          <label class="full-row">Clish Command<textarea id="passwordHashCommand" rows="2" wrap="off" readonly spellcheck="false" aria-describedby="passwordHashCommandHelp"></textarea></label>
+          <div class="form-actions full-row"><button type="button" id="copyPasswordHashCommand" disabled>Copy Clish Command</button></div>
+          <p class="full-row" id="passwordHashCommandHelp">Dollar signs are escaped for use with clish -c in Expert mode or Custom Script. Running this command immediately changes the named account's password. Keep a recovery SSH session open and verify a second login before running save config.</p>
+          <label class="full-row">Raw Hash<textarea id="passwordHashResult" rows="2" wrap="off" readonly spellcheck="false" aria-describedby="passwordHashCopyHelp"></textarea></label>
+          <div class="form-actions full-row"><button type="button" id="copyPasswordHash" disabled>Copy Hash</button></div>
+          <p class="full-row" id="passwordHashCopyHelp">Use Copy Hash to copy exactly 106 characters with no spaces or line breaks. The hash scrolls horizontally. Treat it as sensitive; clear it when finished. Copying puts it on your system clipboard.</p>
+        </form>
+      </section>
+
       <section class="panel output-panel">
         <div class="table-head"><div><h2>Result</h2><p>Run-script results show task status and decoded gateway output. Other responses remain available as formatted JSON.</p></div><button id="clearButton">Clear</button></div>
         <div id="output" class="result-output">Ready.</div>
@@ -136,5 +154,6 @@
   </main>
   <script src="/app.js"></script>
   <script src="/workbench.js"></script>
+  <script type="module" src="/password-hash.js"></script>
 </body>
 </html>

@@ -170,3 +170,33 @@ This is a development framework, not a production-ready authentication boundary.
 ## Required Login Default
 
 Allow Self-Signed Certificate must default to checked for SMS, Smart-1 Cloud, and MDS. Preserve this default in derived apps and agent-driven changes. An omitted API login ignoreTls field defaults to true; an explicit false (unchecked) enables certificate verification for all session contexts. This setting disables TLS certificate verification, not encryption, and does not authenticate the server certificate. Users must remain able to uncheck it. Do not disable TLS verification globally or for catalog downloads.
+
+## SHA-512 Password Hash Tool
+
+After login, select **Password Hash** to generate a salted Gaia/Linux SHA-512 crypt
+hash beginning with `$6$`, with 5,000 rounds and a fresh random 16-character salt.
+This generates a hash only; it does not apply it or change an account. Verify the
+receiving system's hash support and password policy before applying it separately.
+
+This optional tool requires `openssl` on the framework server's PATH with support
+for `openssl passwd -6` (for example OpenSSL 3). No Check Point privileges are
+needed for hashing. The local `POST /api/password-hash` endpoint accepts a JSON
+`password` and returns `hash`, `algorithm`, and `rounds`; it does not require a
+management session. Passwords are passed to OpenSSL through standard input, never
+shell arguments, and are not stored or logged by the tool. Inputs are limited to
+128 UTF-8 bytes and reject line breaks and NUL rather than silently truncating.
+The tool also requires at least 6 characters and rejects `*`: Check Point documents
+that Gaia users with an asterisk in their password cannot log in, including when
+using `password-hash`. Target password policy may impose further requirements.
+See [Gaia user password restrictions](https://sc1.checkpoint.com/documents/R81.20/WebAdminGuides/EN/CP_R81.20_Gaia_AdminGuide/Content/Topics-GAG/Users-Gaia-Clish.htm).
+Use HTTPS when accessing the framework remotely. Protect generated hashes and
+clipboard contents as sensitive data. **Clear** and logout erase the tool's fields;
+they do not erase the system clipboard. This is a password hash, not a raw SHA-512
+hex digest or a recommended default for new application password storage.
+
+The Password Hash page also provides **Copy Clish Command** for the selected Gaia
+username (default `admin`). It wraps the command in double quotes and escapes each
+`$` as `\$`, preserving the raw hash through shell expansion. The raw hash remains
+available separately without escaping. Generating or copying never executes it.
+Running the command changes the named account immediately; keep a recovery SSH
+session open and verify another login before running `clish -c "save config"`.

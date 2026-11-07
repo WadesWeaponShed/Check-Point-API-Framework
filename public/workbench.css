@@ -55,3 +55,5 @@ input:not([type=checkbox]):not([type=radio]), select { min-height: 44px; min-wid
   .login-panel { grid-template-columns: 1fr; padding: 24px; gap: 24px; }
   .workbench-content > .panel { padding: 20px; }
 }
+
+#passwordHashResult, #passwordHashCommand { white-space: pre; overflow-wrap: normal; word-break: normal; overflow-x: auto; }

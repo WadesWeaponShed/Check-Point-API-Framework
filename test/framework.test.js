@@ -340,3 +340,49 @@ test("gateway run-script preset catalog separates monitoring from state-changing
   assert.equal(revert.risk, "danger");
   assert.ok(catalog.presets.length >= 15);
 });
+
+test("password hash workflow generates salted SHA-512 crypt and rejects unsafe input", async () => {
+  const { generatePasswordHash } = await import('../src/workflows/password-hash.js');
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const first = await generatePasswordHash({ password: 'framework-test-password' });
+  const second = await generatePasswordHash({ password: 'framework-test-password' });
+  assert.match(first.hash, /^\$6\$[./A-Za-z0-9]{16}\$[./A-Za-z0-9]{86}$/);
+  assert.notEqual(first.hash, second.hash);
+  assert.equal(first.rounds, 5000);
+  // Public test fixture only; compare the generated salt with OpenSSL independently.
+  const expected = await promisify(execFile)('openssl', ['passwd', '-6', '-salt', first.hash.split('$')[2], 'framework-test-password']);
+  assert.equal(first.hash, expected.stdout.trim());
+  for (const password of ['', null, 'short', 'valid*but-unsupported', 'a\nb', 'a\rb', 'a\0b', 'é'.repeat(65)]) {
+    await assert.rejects(generatePasswordHash({ password }));
+  }
+});
+
+
+test("Gaia hashing matches the published SHA-512 crypt reference vector", async () => {
+  const { hashGaiaPassword } = await import('../src/workflows/password-hash.js');
+  // Ulrich Drepper's SHA-crypt specification, sha512crypt.c tests2:
+  // https://www.akkadia.org/drepper/SHA-crypt.txt
+  const result = await hashGaiaPassword('Hello world!', 'saltstring');
+  assert.equal(result.hash, '$6$saltstring$svn8UoSVapNtMuq1ukKS4tPQd8iKwSMHWjl/O817G3uBnIFNjnQJuesI68u4OTLiBFdcbYEdFCoEOfaS35inz1');
+  await assert.rejects(hashGaiaPassword('example*password', 'saltstring'), /asterisk/);
+  await assert.rejects(hashGaiaPassword('Hello world!', 'bad salt'), /salt/);
+});
+
+test("Clish password command preserves the complete hash through shell expansion", async () => {
+  const { formatClishPasswordCommand } = await import('../public/password-hash-format.js');
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const hash = '$6$abcdefghijklmnop$' + 'A'.repeat(75) + '.hDaavX4G..';
+  assert.equal(hash.length, 106);
+  const command = formatClishPasswordCommand('admin', hash);
+  assert.equal(command, `clish -c "set user admin password-hash ${hash.replaceAll('$', '\\$')}"`);
+  // A shell function captures argv; no real Clish or account changes are involved.
+  const { stdout } = await promisify(execFile)('/bin/sh', ['-c',
+    'clish() { printf "%s\\n" "$#" "$1" "$2"; }; ' + command]);
+  assert.equal(stdout, `2\n-c\nset user admin password-hash ${hash}\n`);
+  for (const username of ['a;id', 'a b', '$(id)', '', 'a'.repeat(33)]) {
+    assert.throws(() => formatClishPasswordCommand(username, hash), /username/);
+  }
+  assert.throws(() => formatClishPasswordCommand('admin', hash + ' '), /hash/);
+});

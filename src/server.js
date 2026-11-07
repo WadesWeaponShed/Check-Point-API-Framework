@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { SessionManager } from "./session-manager.js";
 import { runExampleWorkflow } from "./workflows/example.js";
 import { CatalogManager } from "./catalog-manager.js";
+import { generatePasswordHash } from "./workflows/password-hash.js";
 const catalogs = await new CatalogManager().init();
 
 const HOST = process.env.HOST || "127.0.0.1";
@@ -83,6 +84,9 @@ async function handleApi(req, res) {
         break;
       case "/api/capabilities":
         result = await sessions.capabilities(body.sessionId, body.context);
+        break;
+      case "/api/password-hash":
+        result = await generatePasswordHash(body);
         break;
       case "/api/login":
         result = await sessions.login(body);
